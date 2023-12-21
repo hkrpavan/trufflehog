@@ -78,6 +78,7 @@ var (
 	githubScanEndpoint      = githubScan.Flag("endpoint", "GitHub endpoint.").Default("https://api.github.com").String()
 	githubScanRepos         = githubScan.Flag("repo", `GitHub repository to scan. You can repeat this flag. Example: "https://github.com/dustin-decker/secretsandstuff"`).Strings()
 	githubScanOrgs          = githubScan.Flag("org", `GitHub organization to scan. You can repeat this flag. Example: "trufflesecurity"`).Strings()
+	githubScanPR            = githubScan.Flag("pr", `GitHub pull request to scan. Example: "https://github.com/hkrpavan/trufflehog/pull/38"`).String()
 	githubScanToken         = githubScan.Flag("token", "GitHub token. Can be provided with environment variable GITHUB_TOKEN.").Envar("GITHUB_TOKEN").String()
 	githubIncludeForks      = githubScan.Flag("include-forks", "Include forks in scan.").Bool()
 	githubIncludeMembers    = githubScan.Flag("include-members", "Include organization member repositories in scan.").Bool()
@@ -408,9 +409,12 @@ func run(state overseer.State) {
 		if err != nil {
 			logFatal(err, "could not create filter")
 		}
-		if len(*githubScanOrgs) == 0 && len(*githubScanRepos) == 0 {
+		/* if len(*githubScanOrgs) == 0 && len(*githubScanRepos) == 0 {
 			logFatal(fmt.Errorf("invalid config"), "You must specify at least one organization or repository.")
 		}
+		if len(*githubScanRepos) > 0 && *githubScanPR != "" {
+			logFatal(fmt.Errorf("invalid config"), "You must not combine pull request with repository options.")
+		} */
 
 		cfg := sources.GithubConfig{
 			Endpoint:                   *githubScanEndpoint,
@@ -422,6 +426,7 @@ func run(state overseer.State) {
 			IncludeRepos:               *githubIncludeRepos,
 			Repos:                      *githubScanRepos,
 			Orgs:                       *githubScanOrgs,
+			PR:                         *githubScanPR,
 			IncludeIssueComments:       *githubScanIssueComments,
 			IncludePullRequestComments: *githubScanPRComments,
 			IncludeGistComments:        *githubScanGistComments,

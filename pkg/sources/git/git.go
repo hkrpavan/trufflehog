@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/google/go-github/v42/github"
@@ -140,6 +141,11 @@ func (s *Source) Init(aCtx context.Context, name string, jobId sources.JobID, so
 		opts = append(opts, ScanOptionBaseHash(base))
 	}
 	if head := conn.GetHead(); head != "" {
+		repoPath := conn.Directories[len(conn.Directories)-1]
+		if err := prepareCloneWithHead(aCtx, repoPath, conn.Uri, head, conn.GetBare()); err != nil {
+			return fmt.Errorf("error preparing the clone with head, %s", head)
+		}
+
 		opts = append(opts, ScanOptionHeadCommit(head))
 	}
 	if globs := conn.GetExcludeGlobs(); globs != "" {
@@ -283,9 +289,11 @@ func (s *Source) scanDir(ctx context.Context, gitDir string, reporter sources.Ch
 	}
 
 	err = func() error {
+		/* // For debugging failures let us not delete this temporary workspace
+		// Since this directory is being created in container, its ephimeral
 		if strings.HasPrefix(gitDir, filepath.Join(os.TempDir(), "trufflehog")) {
 			defer os.RemoveAll(gitDir)
-		}
+		} */
 
 		return s.git.ScanRepo(ctx, repo, gitDir, s.scanOptions, reporter)
 	}()
@@ -991,6 +999,47 @@ func getSafeRemoteURL(repo *git.Repository, preferred string) string {
 		return ""
 	}
 	return safeURL
+}
+
+func prepareCloneWithHead(ctx context.Context, repoPath, remoteURL, head string, bare bool) error {
+	// Open or clone the repository
+	repo, err := git.PlainOpen(repoPath)
+	if err != nil {
+		ctx.Logger().Error(err, "Failed to open repo at", "repoPath", repoPath)
+		return fmt.Errorf("Failed to open repository: %s", err)
+	}
+	// Fetch the reference
+	ctx.Logger().Info("Fetching RefSpec", "refSpec", head)
+	err = repo.Fetch(&git.FetchOptions{
+		RemoteURL: remoteURL,
+		RefSpecs:  []config.RefSpec{config.RefSpec(head + ":" + head)},
+	})
+	if err != nil && err != git.NoErrAlreadyUpToDate {
+		ctx.Logger().Error(err, "Failed to fetch reference", "refSpec", head)
+		return fmt.Errorf("Failed to fetch reference: %s with %s", head, err)
+	}
+	ctx.Logger().Info("Successfully fetched reference", "ref", head)
+	/* Get the worktree
+	// This logic is not needed and can save time.
+	worktree, err := repo.Worktree()
+	if err != nil {
+		ctx.Logger().Error(err, "Unable to get worktree for path", "repoPath", repoPath)
+		return fmt.Errorf("Failed to get worktree: %s", err)
+	}
+
+	// Checkout to the fetched reference.
+
+	localRef := plumbing.NewBranchReferenceName(head)
+	err = worktree.Checkout(&git.CheckoutOptions{
+		Branch: plumbing.ReferenceName(localRef.String()),
+	})
+	if err != nil {
+		ctx.Logger().Error(err, "Failed to checkout reference", "head", head)
+		return fmt.Errorf("Failed to checkout reference: %s", err)
+	}
+
+	ctx.Logger().Info("Checkout successful!") */
+	return nil
 }
 
 func handleBinary(ctx context.Context, gitDir string, reporter sources.ChunkReporter, chunkSkel *sources.Chunk, commitHash plumbing.Hash, path string) error {

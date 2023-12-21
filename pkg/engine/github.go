@@ -18,6 +18,7 @@ func (e *Engine) ScanGitHub(ctx context.Context, c sources.GithubConfig) error {
 		Endpoint:                   c.Endpoint,
 		Organizations:              c.Orgs,
 		Repositories:               c.Repos,
+		Pullrequest:                c.PR,
 		ScanUsers:                  c.IncludeMembers,
 		IgnoreRepos:                c.ExcludeRepos,
 		IncludeRepos:               c.IncludeRepos,

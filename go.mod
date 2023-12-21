@@ -75,7 +75,7 @@ require (
 	go.mongodb.org/mongo-driver v1.12.1
 	go.uber.org/mock v0.3.0
 	go.uber.org/zap v1.26.0
-	golang.org/x/crypto v0.16.0
+	golang.org/x/crypto v0.17.0
 	golang.org/x/exp v0.0.0-20231127185646-65229373498e
 	golang.org/x/net v0.19.0
 	golang.org/x/oauth2 v0.15.0
@@ -233,6 +233,7 @@ require (
 	github.com/sahilm/fuzzy v0.1.0 // indirect
 	github.com/sirupsen/logrus v1.9.1 // indirect
 	github.com/skeema/knownhosts v1.2.1 // indirect
+	github.com/src-d/gcfg v1.4.0 // indirect
 	github.com/therootcompany/xz v1.0.1 // indirect
 	github.com/ulikunitz/xz v0.5.11 // indirect
 	github.com/vbatts/tar-split v0.11.3 // indirect
@@ -254,7 +255,7 @@ require (
 	golang.org/x/sys v0.15.0 // indirect
 	golang.org/x/term v0.15.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	golang.org/x/tools v0.16.0 // indirect
+	golang.org/x/tools v0.16.1 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20231106174013-bbf56f31fb17 // indirect
@@ -262,6 +263,8 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231120223509-83a465c0220f // indirect
 	google.golang.org/grpc v1.59.0 // indirect
 	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
+	gopkg.in/src-d/go-billy.v4 v4.3.2 // indirect
+	gopkg.in/src-d/go-git.v4 v4.13.1 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

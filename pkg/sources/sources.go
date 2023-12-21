@@ -177,6 +177,8 @@ type GitConfig struct {
 type GithubConfig struct {
 	// Endpoint is the endpoint of the source.
 	Endpoint,
+	// PRs is the list of pull requests to scan
+	PR,
 	// Token is the token to use to authenticate with the source.
 	Token string
 	// IncludeForks indicates whether to include forks in the scan.

@@ -57,6 +57,7 @@ type Source struct {
 	jobID             sources.JobID
 	verify            bool
 	repos             []string
+	pr                string
 	orgsCache         cache.Cache
 	filteredRepoCache *filteredRepoCache
 	memberCache       map[string]struct{}
@@ -211,16 +212,12 @@ func (s *Source) Init(aCtx context.Context, name string, jobID sources.JobID, so
 	s.jobPool = &errgroup.Group{}
 	s.jobPool.SetLimit(concurrency)
 
-	s.httpClient = common.RetryableHttpClientTimeout(60)
-	s.apiClient = github.NewClient(s.httpClient)
-
 	var conn sourcespb.GitHub
 	err := anypb.UnmarshalTo(connection, &conn, proto.UnmarshalOptions{})
 	if err != nil {
 		return errors.WrapPrefix(err, "error unmarshalling connection", 0)
 	}
 	s.conn = &conn
-
 	s.filteredRepoCache = s.newFilteredRepoCache(memory.New(),
 		append(s.conn.GetRepositories(), s.conn.GetIncludeRepos()...),
 		s.conn.GetIgnoreRepos(),
@@ -228,7 +225,53 @@ func (s *Source) Init(aCtx context.Context, name string, jobID sources.JobID, so
 	s.memberCache = make(map[string]struct{})
 
 	s.repoSizes = newRepoSize()
-	s.repos = s.conn.Repositories
+
+	s.httpClient = common.RetryableHttpClientTimeout(60)
+
+	ctx := context.Background()
+	ts := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: s.conn.GetToken()},
+	)
+	tc := oauth2.NewClient(ctx, ts)
+	// s.apiClient, err = github.NewEnterpriseClient("https://aci-github.cisco.com", "https://aci-github.cisco.com", tc)
+	s.apiClient, err = github.NewEnterpriseClient(s.conn.Endpoint, s.conn.Endpoint, tc)
+	if err != nil {
+		s.log.Error(err, "error creating GitHub client")
+	}
+	if s.conn.Pullrequest != "" {
+
+		pr := s.conn.Pullrequest
+
+		prParts := strings.Split(pr, "/pull/")
+		if len(prParts) < 2 {
+			return fmt.Errorf("Invalid pull request, %s", pr)
+		}
+
+		prRepoURL := prParts[0]
+		prID, err := strconv.Atoi(prParts[1])
+		if err != nil {
+			return fmt.Errorf("Invalid pull request, %s", pr)
+		}
+
+		urlParts := strings.Split(prRepoURL, "/")
+
+		prRepo := urlParts[len(urlParts)-1]
+		prOwner := urlParts[len(urlParts)-2]
+
+		ghPr, _, err := s.apiClient.PullRequests.Get(context.TODO(), prOwner, prRepo, prID)
+		if err != nil {
+			fmt.Println(err)
+			return fmt.Errorf("Unable to get PR details, %s", pr)
+		}
+
+		s.conn.Base = ghPr.GetBase().GetSHA()
+		s.conn.Head = ghPr.GetHead().GetSHA()
+		s.repos = append(s.repos, ghPr.GetHead().Repo.GetCloneURL())
+		fmt.Println("PHKR DEBUG - Base=", s.conn.Base, "HEAD=", s.conn.Head, "PR url=", s.repos)
+	} else {
+		s.repos = s.conn.Repositories
+	}
+
 	for _, repo := range s.repos {
 		r, err := s.normalizeRepo(repo)
 		if err != nil {
@@ -243,6 +286,7 @@ func (s *Source) Init(aCtx context.Context, name string, jobID sources.JobID, so
 	s.includeGistComments = s.conn.IncludeGistComments
 
 	s.orgsCache = memory.New()
+
 	for _, org := range s.conn.Organizations {
 		s.orgsCache.Set(org, org)
 	}
